@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Portafolio · Arrivillaga</title>
+  <meta name="description" content="Portafolio 3D interactivo: explora un bosque con un gato.">
+</head>
+<body>
+  <canvas id="scene" aria-label="Vista 3D del gato"></canvas>
+  <div id="loading">Cargando…</div>
+  <div id="ui"></div>
+  <div id="world" hidden>
+    <p class="help help-keys"><kbd>WASD</kbd> moverse · <kbd>Shift</kbd> correr · <kbd>Espacio</kbd> saltar · <kbd>E</kbd> cabezazo · arrastra: mirar · rueda: zoom</p>
+    <p class="help help-touch">Joystick: moverte · ⤒ saltar · huella: cabezazo · desliza: mirar</p>
+    <div class="hud-actions">
+      <button type="button" id="credits-btn">Créditos</button>
+      <button type="button" id="edit-cat">Editar gato</button>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

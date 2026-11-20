@@ -86,6 +86,7 @@ export class GamerCat {
     this.#recolor(fur.main, fur.dark);
     this.headset.visible = !!look.headset;
     this.collar.visible = !!look.collar;
+    this.crown.visible = !!look.crown;
   }
 
   update(dt, t) {
@@ -211,7 +212,31 @@ export class GamerCat {
     mount(headset, new THREE.Vector3(hc.x, hc.y + hs.y * 0.2, hc.z).addScaledVector(forward, hs.z * 0.05));
     mount(collar, new THREE.Vector3(hc.x, hc.y - hs.y * 0.24, hc.z).addScaledVector(forward, -hs.z * 0.52));
 
+    // corona dorada (premio de la casa del árbol): aro con picos y gemas
+    const crown = new THREE.Group();
+    crown.name = 'Crown';
+    const gold = new THREE.MeshStandardMaterial({ color: 0xffc83d, metalness: 0.85, roughness: 0.25, emissive: 0x5a3a00, emissiveIntensity: 0.3 });
+    const cr = hs.x * 0.26, ch = hs.y * 0.16;
+    const crownBand = new THREE.Mesh(new THREE.CylinderGeometry(cr, cr, ch, 20, 1, true), gold);
+    crownBand.material.side = THREE.DoubleSide;
+    crown.add(crownBand);
+    const gemColors = [0xff6fb5, 0x38e1ff, 0x9be36f];
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(cr * 0.28, ch * 1.3, 6), gold);
+      spike.position.set(Math.cos(a) * cr, ch * 1.1, Math.sin(a) * cr); crown.add(spike);
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(cr * 0.14), new THREE.MeshStandardMaterial({ color: gemColors[i % 3], emissive: gemColors[i % 3], emissiveIntensity: 0.6 }));
+      gem.position.set(Math.cos(a) * cr * 1.02, 0, Math.sin(a) * cr * 1.02); crown.add(gem);
+    }
+    // la corona se monta "de pie": el eje del cilindro debe apuntar hacia arriba del mundo
+    crown.position.copy(new THREE.Vector3(hc.x, hc.y + hs.y * 0.62, hc.z).addScaledVector(forward, -hs.z * 0.05));
+    this.root.add(crown);
+    crown.updateMatrixWorld(true);
+    this.head.attach(crown);
+    crown.visible = false;
+
     this.headset = headset;
     this.collar = collar;
+    this.crown = crown;
   }
 }

@@ -1,3 +1,4 @@
+import { isCrownUnlocked } from '../state.js';
 import { FURS } from '../cat/palettes.js';
 
 /**
@@ -36,6 +37,11 @@ export function createCustomizer(host, { look, onChange, onEnter, onCredits }) {
           <span class="track"><span class="thumb"></span></span>
           <span class="tlabel">Collar LED</span>
         </label>
+        <label class="toggle" data-crown-row>
+          <input type="checkbox" data-acc="crown">
+          <span class="track"><span class="thumb"></span></span>
+          <span class="tlabel">Corona dorada <small data-crown-hint>(se gana en la cima de la casa del árbol)</small></span>
+        </label>
       </fieldset>
 
       <div class="actions">
@@ -59,6 +65,12 @@ export function createCustomizer(host, { look, onChange, onEnter, onCredits }) {
     });
     furName.textContent = FURS.find((f) => f.id === state.fur)?.name ?? '';
     toggles.forEach((t) => { t.checked = !!state[t.dataset.acc]; });
+    // la corona está bloqueada hasta llegar a la cima de la casa del árbol
+    const unlocked = isCrownUnlocked();
+    const crownInput = host.querySelector('[data-acc="crown"]');
+    crownInput.disabled = !unlocked;
+    host.querySelector('[data-crown-row]').classList.toggle('locked', !unlocked);
+    host.querySelector('[data-crown-hint]').hidden = unlocked;
   }
 
   function set(patch) {
@@ -93,7 +105,9 @@ export function createCustomizer(host, { look, onChange, onEnter, onCredits }) {
 
   render();
   return {
-    show() { host.hidden = false; requestAnimationFrame(() => host.classList.remove('out')); },
+    /** Sincroniza el panel con un look cambiado desde fuera (p. ej. al ganar la corona). */
+    sync(next) { Object.assign(state, next); render(); },
+    show() { render(); host.hidden = false; requestAnimationFrame(() => host.classList.remove('out')); },
     hide() { host.classList.add('out'); setTimeout(() => { host.hidden = true; }, 450); },
   };
 }

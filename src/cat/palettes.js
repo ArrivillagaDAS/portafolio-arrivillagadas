@@ -7,4 +7,4 @@ export const FURS = [
   { id: 'neon', name: 'Neón', main: '#b48cff', dark: '#4a2a9e' },
 ];
 
-export const DEFAULT_LOOK = { fur: 'naranja', headset: true, collar: true };
+export const DEFAULT_LOOK = { fur: 'naranja', headset: true, collar: true, crown: false };

@@ -15,7 +15,14 @@ export function createHud(host) {
   const fishEl = host.querySelector('.fish');
   const tunnelEl = document.querySelector('.tunnel');
   const sandEl = document.querySelector('.sand');
-  let toastTimer = 0, lastLabel = null;
+  let toastTimer = 0, lastLabel = null, quoteTimer = 0;
+  document.body.insertAdjacentHTML('beforeend', `
+    <aside class="quote" role="status" aria-live="polite" hidden>
+      <p class="eyebrow" data-q-n></p>
+      <p class="q" data-q-text></p>
+      <p class="q-end" data-q-end hidden>Encontraste todos los pescados. Gracias por conocer lo que me motiva.</p>
+    </aside>`);
+  const quoteEl = document.querySelector('.quote');
 
   return {
     prompt(label) {
@@ -44,5 +51,38 @@ export function createHud(host) {
       tunnelEl.classList.remove('run'); void tunnelEl.offsetWidth; tunnelEl.classList.add('run');
     },
     sand(on) { sandEl.classList.toggle('on', on); },
+    /** Frase de un pescado dorado: tarjeta grande en el centro durante unos segundos. */
+    quote(text, n, total) {
+      fishEl.querySelector('[data-n]').textContent = n;
+      fishEl.querySelector('[data-t]').textContent = total;
+      fishEl.classList.remove('bump'); void fishEl.offsetWidth; fishEl.classList.add('bump');
+      quoteEl.querySelector('[data-q-n]').textContent = `Pescado dorado ${n} de ${total}`;
+      quoteEl.querySelector('[data-q-text]').textContent = text;
+      quoteEl.querySelector('[data-q-end]').hidden = n !== total;
+      quoteEl.hidden = false;
+      quoteEl.classList.remove('in'); void quoteEl.offsetWidth; quoteEl.classList.add('in');
+      clearTimeout(quoteTimer);
+      quoteTimer = setTimeout(() => { quoteEl.hidden = true; }, n === total ? 7000 : 5200);
+      if (n === total) this.confetti();
+    },
+    /** Lluvia de confeti hecha con elementos DOM (se borra sola). */
+    confetti() {
+      const colors = ['#ff6fb5', '#ffafcc', '#ffd23f', '#6fd3ff', '#b79cff', '#fff3e4'];
+      const box = document.createElement('div');
+      box.className = 'confetti';
+      box.setAttribute('aria-hidden', 'true');
+      for (let i = 0; i < 90; i++) {
+        const p = document.createElement('i');
+        p.style.left = `${Math.random() * 100}%`;
+        p.style.background = colors[i % colors.length];
+        p.style.animationDelay = `${Math.random() * 0.6}s`;
+        p.style.animationDuration = `${1.8 + Math.random() * 1.4}s`;
+        p.style.setProperty('--dx', `${(Math.random() - 0.5) * 220}px`);
+        p.style.setProperty('--rot', `${Math.random() * 720 - 360}deg`);
+        box.appendChild(p);
+      }
+      document.body.appendChild(box);
+      setTimeout(() => box.remove(), 3800);
+    },
   };
 }

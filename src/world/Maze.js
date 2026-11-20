@@ -17,11 +17,11 @@ function rng(seed) { // mulberry32: laberinto igual en cada visita
 }
 
 /** Genera el laberinto con DFS y calcula distancias desde la entrada. */
-function generate(seed = 7) {
+function generate(seed = 7, start = [0, 0]) {
   const rand = rng(seed);
   const cells = Array.from({ length: COLS * ROWS }, () => ({ n: true, s: true, e: true, w: true, seen: false }));
   const at = (c, r) => cells[r * COLS + c];
-  const stack = [[0, 0]]; at(0, 0).seen = true;
+  const stack = [start.slice()]; at(start[0], start[1]).seen = true;
   while (stack.length) {
     const [c, r] = stack[stack.length - 1];
     const opts = [[0, -1, 'n', 's'], [0, 1, 's', 'n'], [1, 0, 'e', 'w'], [-1, 0, 'w', 'e']]
@@ -31,8 +31,8 @@ function generate(seed = 7) {
     at(c, r)[a] = false; at(c + dc, r + dr)[b] = false; at(c + dc, r + dr).seen = true;
     stack.push([c + dc, r + dr]);
   }
-  const dist = new Array(COLS * ROWS).fill(-1); dist[0] = 0;
-  const q = [[0, 0]];
+  const dist = new Array(COLS * ROWS).fill(-1); dist[start[1] * COLS + start[0]] = 0;
+  const q = [start.slice()];
   while (q.length) {
     const [c, r] = q.shift(), cell = at(c, r), d = dist[r * COLS + c];
     for (const [dc, dr, k] of [[0, -1, 'n'], [0, 1, 's'], [1, 0, 'e'], [-1, 0, 'w']]) {
@@ -105,25 +105,35 @@ function makeFish() {
  * @param {THREE.Scene} scene
  * @param {import('../physics/Physics.js').Physics} physics
  */
-export function buildMaze(scene, physics) {
+export function buildMaze(scene, physics, { origin = MAZE_ORIGIN, embedded = false, fishCount = 8 } = {}) {
   const group = new THREE.Group();
   group.name = 'Maze';
-  group.position.copy(MAZE_ORIGIN);
+  group.position.copy(origin);
   scene.add(group);
   const rand = rng(99);
-  const { cells, at, dist } = generate();
+  // dentro del bosque se entra a pie por el lado sur (celda central de la última fila)
+  const entrance = embedded ? [COLS / 2, ROWS - 1] : [0, 0];
+  const entranceIdx = entrance[1] * COLS + entrance[0];
+  const { cells, at, dist } = generate(7, entrance);
+  if (embedded) at(entrance[0], entrance[1]).s = false; // abertura en el seto exterior
   const W = COLS * CELL, D = ROWS * CELL;
   const ox = -W / 2, oz = -D / 2;
-  const toWorld = (x, y, z) => new THREE.Vector3(x, y, z).add(MAZE_ORIGIN);
+  const toWorld = (x, y, z) => new THREE.Vector3(x, y, z).add(origin);
   const cellCenter = (c, r) => new THREE.Vector3(ox + (c + 0.5) * CELL, 0, oz + (r + 0.5) * CELL);
   const addBox = (x0, y0, z0, x1, y1, z1) => physics.addStaticBox(new THREE.Box3(toWorld(x0, y0, z0), toWorld(x1, y1, z1)));
   const animated = [];
 
   // ---------- pradera ----------
-  const MEADOW = 16;
-  const ground = new THREE.Mesh(new THREE.BoxGeometry(MEADOW, 0.1, MEADOW), new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 1 }));
-  ground.position.y = -0.05; ground.receiveShadow = true; group.add(ground);
-  addBox(-MEADOW / 2, -1, -MEADOW / 2, MEADOW / 2, 0, MEADOW / 2);
+  if (!embedded) {
+    const MEADOW = 16;
+    const ground = new THREE.Mesh(new THREE.BoxGeometry(MEADOW, 0.1, MEADOW), new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 1 }));
+    ground.position.y = -0.05; ground.receiveShadow = true; group.add(ground);
+    addBox(-MEADOW / 2, -1, -MEADOW / 2, MEADOW / 2, 0, MEADOW / 2);
+  } else {
+    // suelo de césped dentro del laberinto (encima del suelo del bosque)
+    const lawn = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 1 }));
+    lawn.rotation.x = -Math.PI / 2; lawn.position.y = 0.004; lawn.receiveShadow = true; group.add(lawn);
+  }
 
   // ---------- setos ----------
   const segs = [];
@@ -178,7 +188,7 @@ export function buildMaze(scene, physics) {
       if (rand() < 0.5) addFlower(p.x + side * CELL * 0.36, p.z + along); else addFlower(p.x + along, p.z + side * CELL * 0.36);
     }
   }
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < (embedded ? 0 : 260); i++) {
     const a = rand() * Math.PI * 2, rr = W / 2 + 0.6 + rand() * 4.5;
     addFlower(Math.cos(a) * rr, Math.sin(a) * rr);
   }
@@ -193,7 +203,7 @@ export function buildMaze(scene, physics) {
   // ---------- árboles alrededor ----------
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7a5236, roughness: 1 });
   const leafMats = [0x4f9e45, 0x6cbf4f, 0x3f8a48].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < (embedded ? 0 : 18); i++) {
     const a = (i / 18) * Math.PI * 2 + rand() * 0.2, rr = W / 2 + 1.4 + rand() * 3;
     const tree = new THREE.Group();
     tree.position.set(Math.cos(a) * rr, 0, Math.sin(a) * rr);
@@ -208,7 +218,7 @@ export function buildMaze(scene, physics) {
   // nubes esponjosas
   const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true });
   const clouds = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < (embedded ? 0 : 6); i++) {
     const cl = new THREE.Group();
     for (let k = 0; k < 4; k++) {
       const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4 + rand() * 0.3, 0), cloudMat);
@@ -258,32 +268,34 @@ export function buildMaze(scene, physics) {
   });
 
   // ---------- entrada y salida ----------
-  const start = cellCenter(0, 0);
-  const hole = new THREE.Mesh(new THREE.CircleGeometry(0.2, 24), new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 1 }));
-  hole.rotation.x = -Math.PI / 2; hole.position.set(start.x, 0.003, start.z); group.add(hole);
-  const holeIn = new THREE.Mesh(new THREE.CircleGeometry(0.14, 24), new THREE.MeshBasicMaterial({ color: 0x1a0f08 }));
-  holeIn.rotation.x = -Math.PI / 2; holeIn.position.set(start.x, 0.005, start.z); group.add(holeIn);
-
-  let far = 0;
+  const start = cellCenter(entrance[0], entrance[1]);
+  let far = entranceIdx;
   dist.forEach((d, i) => { if (d > dist[far]) far = i; });
-  const exitPos = cellCenter(far % COLS, Math.floor(far / COLS));
-  const exitBox = litterBox({ x: exitPos.x, z: exitPos.z, glow: false });
-  exitBox.object.scale.setScalar(0.85);
-  group.add(exitBox.object);
-  group.updateMatrixWorld(true); // cajas en coordenadas de mundo
-  const exitInner = new THREE.Box3().setFromObject(exitBox.object.children[0]).expandByVector(new THREE.Vector3(-0.02, 0.3, -0.02));
-  exitBox.object.children.slice(1, 5).forEach((w) => physics.addStaticBox(new THREE.Box3().setFromObject(w)));
-  const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.18, 2.2, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
-  beacon.position.set(exitPos.x, 1.1, exitPos.z); group.add(beacon);
+  let exitInner = null, exitBox = null, beacon = null;
+  if (!embedded) {
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.2, 24), new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 1 }));
+    hole.rotation.x = -Math.PI / 2; hole.position.set(start.x, 0.003, start.z); group.add(hole);
+    const holeIn = new THREE.Mesh(new THREE.CircleGeometry(0.14, 24), new THREE.MeshBasicMaterial({ color: 0x1a0f08 }));
+    holeIn.rotation.x = -Math.PI / 2; holeIn.position.set(start.x, 0.005, start.z); group.add(holeIn);
+    const exitPos = cellCenter(far % COLS, Math.floor(far / COLS));
+    exitBox = litterBox({ x: exitPos.x, z: exitPos.z, glow: false });
+    exitBox.object.scale.setScalar(0.85);
+    group.add(exitBox.object);
+    group.updateMatrixWorld(true); // cajas en coordenadas de mundo
+    exitInner = new THREE.Box3().setFromObject(exitBox.object.children[0]).expandByVector(new THREE.Vector3(-0.02, 0.3, -0.02));
+    exitBox.object.children.slice(1, 5).forEach((w) => physics.addStaticBox(new THREE.Box3().setFromObject(w)));
+    beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.18, 2.2, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+    beacon.position.set(exitPos.x, 1.1, exitPos.z); group.add(beacon);
+  }
 
   // ---------- pescados dorados en los callejones sin salida ----------
   const deadEnds = [];
   cells.forEach((cell, i) => {
     const open = ['n', 's', 'e', 'w'].filter((k) => !cell[k]).length;
-    if (open === 1 && i !== 0 && i !== far) deadEnds.push(i);
+    if (open === 1 && i !== entranceIdx && (embedded || i !== far)) deadEnds.push(i);
   });
   deadEnds.sort((a, b) => dist[b] - dist[a]);
-  const fishes = deadEnds.slice(0, 8).map((i) => {
+  const fishes = deadEnds.slice(0, fishCount).map((i) => {
     const f = makeFish();
     const p = cellCenter(i % COLS, Math.floor(i / COLS));
     f.position.set(p.x, 0.22, p.z);
@@ -298,12 +310,14 @@ export function buildMaze(scene, physics) {
     get collected() { return collected; },
     spawn: toWorld(start.x, 0.05, start.z),
     exitInner,
-    shadowCenter: MAZE_ORIGIN.clone(),
+    shadowCenter: origin.clone(),
+    bounds: new THREE.Box3(toWorld(-W / 2, -1, -D / 2), toWorld(W / 2, 5, D / 2)),
+    entrance: toWorld(start.x, 0, start.z + CELL),
     update(t, dt, ctx) {
-      if (ctx?.catPos) local.copy(ctx.catPos).sub(MAZE_ORIGIN);
+      if (ctx?.catPos) local.copy(ctx.catPos).sub(origin);
       animated.forEach((f) => f(t, dt));
-      beacon.material.opacity = 0.16 + Math.sin(t * 3) * 0.06;
-      exitBox.update(t);
+      if (beacon) beacon.material.opacity = 0.16 + Math.sin(t * 3) * 0.06;
+      exitBox?.update(t);
       for (const o of fishes) {
         if (o.taken) {
           if (o.pop < 1) { o.pop += dt * 2.5; o.f.scale.setScalar(1 + o.pop * 1.5); o.f.position.y += dt * 1.2; o.f.traverse((m) => { if (m.material) { m.material.transparent = true; m.material.opacity = 1 - o.pop; } }); }
@@ -314,7 +328,7 @@ export function buildMaze(scene, physics) {
         o.f.position.y = 0.22 + Math.sin(t * 3 + o.f.position.x) * 0.04;
         if (ctx?.cameraPos) o.f.userData.halo.lookAt(ctx.cameraPos);
         if (ctx?.catPos && Math.hypot(local.x - o.f.position.x, local.z - o.f.position.z) < 0.26 && local.y < 0.6) {
-          o.taken = true; collected++; ctx.onFish?.(collected, fishes.length);
+          o.taken = true; collected++; ctx.onFish?.(collected, fishes.length, collected - 1);
         }
       }
     },

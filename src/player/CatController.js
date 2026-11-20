@@ -17,6 +17,8 @@ export class CatController {
    */
   constructor(physics, cat, input, { walk = WALK, run = RUN } = {}) {
     this.walk = walk; this.run = run; // m/s (el mundo abierto usa velocidades mayores)
+    this.speedMul = 1;   // < 1 en el agua
+    this.canJump = true; // false dentro del laberinto
     const { RAPIER, world } = physics;
     this.physics = physics; this.cat = cat; this.input = input;
     this.body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
@@ -72,7 +74,7 @@ export class CatController {
     const fwd = new THREE.Vector3(-Math.sin(this.camYaw), 0, -Math.cos(this.camYaw));
     const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
     const wish = right.multiplyScalar(inp.x).addScaledVector(fwd, inp.y);
-    const speed = (this.input.running ? this.run : this.walk) * inp.mag;
+    const speed = (this.input.running ? this.run : this.walk) * inp.mag * this.speedMul;
     if (wish.lengthSq() > 1e-4) wish.normalize().multiplyScalar(speed);
     const k = 1 - Math.exp(-ACCEL * dt * (this.grounded ? 1 : 0.6)); // algo menos de control en el aire
     this.vel.x += (wish.x - this.vel.x) * k;
@@ -80,7 +82,8 @@ export class CatController {
 
     // salto con "coyote time" y buffer
     this.sinceGround = this.grounded ? 0 : this.sinceGround + dt;
-    if (this.input.consumeJump() && !(this.frozen > 0)) this.sinceJumpPress = 0; else this.sinceJumpPress += dt;
+    if (this.input.consumeJump() && !(this.frozen > 0) && this.canJump) this.sinceJumpPress = 0; else this.sinceJumpPress += dt;
+    if (this.hopQueued && this.grounded) { this.hopQueued = false; this.vy = JUMP_V * 0.7; this.sinceGround = COYOTE; this.jumped = true; }
     this.jumped = false;
     if (this.sinceJumpPress < BUFFER && this.sinceGround < COYOTE) {
       this.vy = JUMP_V; this.sinceGround = COYOTE; this.sinceJumpPress = BUFFER; this.jumped = true;

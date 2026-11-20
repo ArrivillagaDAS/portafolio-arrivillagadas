@@ -5,7 +5,8 @@ import { createCustomizer } from './ui/customizer.js';
 import { createHud } from './ui/hud.js';
 import { createCredits } from './ui/credits.js';
 import { createZonePanel } from './ui/zonePanel.js';
-import { loadLook, saveLook } from './state.js';
+import { loadLook, saveLook, isCrownUnlocked, unlockCrown } from './state.js';
+import { MOTIVATIONS } from './content.js';
 import { Physics } from './physics/Physics.js';
 import { buildForest } from './world/Forest.js';
 import { CatController } from './player/CatController.js';
@@ -87,7 +88,8 @@ const panel = createZonePanel();
 async function ensureWorld() {
   if (forest) return;
   physics = await Physics.create();
-  forest = buildForest(world, physics);
+  forest = buildForest(world, physics, { lowQuality: isMobile });
+  if (isCrownUnlocked()) forest.tree.takePrize(); // el cofre ya está abierto si la corona se ganó antes
   player = new CatController(physics, cat, input, { walk: 1.8, run: 4.2 });
 }
 
@@ -193,10 +195,46 @@ function zones() {
   const p = cat.root.position;
   let best = null, bestD = Infinity;
   for (const t of forest.triggers) {
+    if (t.maxY !== undefined && p.y > t.maxY) continue;
     const d = Math.hypot(p.x - t.pos.x, p.z - t.pos.z);
     if (d < t.radius && d < bestD) { best = t; bestD = d; }
   }
   if (best) panel.show(best.zone, best.data); else panel.hide();
+
+  // laberinto: dentro no se puede saltar
+  const inMaze = forest.maze.bounds.containsPoint(p);
+  player.canJump = !inMaze;
+  if (inMaze !== water.inMaze) { water.inMaze = inMaze; hud.setFish(inMaze ? forest.maze : null); }
+
+  // agua: el gato puede entrar, pero no le gusta
+  const lk = forest.lake;
+  const wet = Math.hypot(p.x - lk.x, p.z - lk.z) < lk.radius - 0.15 && p.y < 0.3;
+  ctx.inWater = wet;
+  if (wet && !water.in) {
+    water.in = true; water.time = 0;
+    player.hopQueued = true; // brinco de susto al tocar el agua
+    hud.toast(WATER_LINES[Math.floor(Math.random() * WATER_LINES.length)], 1800);
+  } else if (!wet && water.in) {
+    water.in = false; water.shake = 0.9; // se sacude al salir
+    hud.toast('Brr... sacudida de gato', 1400);
+  }
+  if (water.in) {
+    water.time += 1 / 60;
+    player.speedMul = 0.45;
+    if (water.time > 1.2 && Math.random() < 0.012) player.hopQueued = true; // salta de vez en cuando, incómodo
+  } else player.speedMul = 1;
+
+  // premio en la casa del árbol
+  const prize = forest.tree.prize;
+  if (!prize.taken && Math.hypot(p.x - prize.pos.x, p.z - prize.pos.z) < 0.75 && Math.abs(p.y - prize.pos.y) < 0.5) {
+    forest.tree.takePrize();
+    unlockCrown();
+    const next = { ...cat.look, crown: true };
+    cat.applyLook(next); saveLook(next); customizer.sync(next);
+    player.perform('Headbutt', 0.5);
+    hud.confetti();
+    hud.toast('¡Corona desbloqueada! Ya la puedes usar en "Editar gato"', 4200);
+  }
 
   if (!input.consumeAction() || player.frozen > 0) return;
   // cabezazo: empuja lo que haya delante (letras, latas, estambres)
@@ -208,11 +246,19 @@ function zones() {
   }, 200);
 }
 
+const WATER_LINES = ['¡Agua! ¡Agua fría!', 'A los gatos no les gusta mojarse...', '¡Miau! ¿Quién puso agua aquí?'];
+const water = { in: false, time: 0, shake: 0 };
+
 // acceso de depuración solo en desarrollo
 if (import.meta.env.DEV) window.__game = { get follow() { return follow; }, get player() { return player; }, get forest() { return forest; }, get physics() { return physics; }, camera, cat, renderer, world };
 
 // ======================= bucle =======================
 const clock = new THREE.Clock();
+const ctx = {
+  catPos: new THREE.Vector3(), cameraPos: camera.position, inWater: false,
+  onFish: (n, total, idx) => hud.quote(MOTIVATIONS[idx % MOTIVATIONS.length], n, total),
+  onStep: (n, total) => { if (n === total) hud.toast('¡Último escalón! Sube a la casa', 1600); else if (n % 5 === 0) hud.toast(`Escalón ${n} de ${total}`, 1100); },
+};
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   renderer.toneMapping = mode === 'world' ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
@@ -233,8 +279,12 @@ renderer.setAnimationLoop(() => {
   physics.step(dt, (h) => player.fixedStep(h));
   player.update(dt, physics.acc / (1 / 60));
   cat.update(dt, t);
-  forest.update(t, dt);
+  ctx.catPos.copy(cat.root.position);
+  forest.update(t, dt, ctx);
   zones();
+  // en el agua el gato se hunde un poco; al salir se sacude
+  if (water.in) cat.root.position.y -= 0.05;
+  if (water.shake > 0) { water.shake -= dt; cat.model.rotation.z = Math.sin(water.shake * 40) * 0.25 * water.shake; } else cat.model.rotation.z = 0;
   // la sombra del sol sigue al gato (sombras nítidas sin un mapa gigante)
   const c = cat.root.position;
   sun.position.set(c.x + 6, 12, c.z + 8);

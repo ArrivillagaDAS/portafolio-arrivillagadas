@@ -1,6 +1,6 @@
-# Portafolio Arrivillaga
+# Portafolio de Angela Arrivillaga
 
-Portafolio web interactivo en 3D. El visitante personaliza un gato y explora con él un bosque abierto: cada lugar del mapa es una sección del portafolio. La idea toma como referencia conceptual los portafolios de mundo abierto (navegar explorando en lugar de usar menús), con un gato en lugar de un vehículo.
+Portafolio web interactivo en 3D de Angela Sofía Arrivillaga, desarrolladora junior en formación (Desarrollo de Software y Diseño y Desarrollo de Videojuegos, Guatemala). El visitante personaliza un gato y explora con él un bosque abierto: cada lugar del mapa es una sección del portafolio. La idea toma como referencia conceptual los portafolios de mundo abierto (navegar explorando en lugar de usar menús), con un gato en lugar de un vehículo.
 
 **Sitio publicado:** https://arrivillagadas.github.io/portafolio-arrivillagadas/
 
@@ -8,20 +8,20 @@ Todo corre en el navegador con Three.js y Rapier, sin modelos de pago: los model
 
 ## Estado
 
-Fase 1: mapa en caja gris. El terreno, los caminos y las zonas ya están en su lugar, con el gato caminando y la cámara alta. Las siguientes fases agregan la ambientación, el contenido final, la cabaña con el cuarto gamer y el laberinto.
+Fase 2: bosque ambientado con contenido real. Pasto que se mece con el viento y se aparta al paso del gato, arbustos, flores, mariposas y nubes. Pendiente: el interior de la cabaña con el cuarto gamer.
 
 ## Mapa
 
 | Zona | Sección |
 |---|---|
 | Claro central | Nombre en bloques que el gato puede derribar |
-| Sendero de proyectos | Un letrero por proyecto; al acercarse se abre su ficha |
-| Cabaña | Sobre mí (después: el cuarto gamer como interior) |
-| Árbol de habilidades | Lista de tecnologías, faroles y escalones para trepar |
+| Sendero de proyectos | Un letrero por proyecto (ALBA, CampusShop, Distribuidora del Valle, CampusParking, Gato gamer); al acercarse se abre su ficha con demo y código |
+| Cabaña | Sobre mí y perfil |
+| Casa del árbol | Skills por nivel y un parkour en espiral de 14 escalones; en la cima hay un cofre con una corona que se desbloquea como accesorio del gato |
 | Buzón | Contacto |
 | Zona de juegos | Latas como bolos y estambres |
-| Lago | Zona de paisaje |
-| Laberinto de setos | Jardín secreto (próximamente) |
+| Lago | Se puede entrar, pero al gato no le gusta: se mueve lento, brinca y se sacude al salir |
+| Laberinto de setos | Jardín secreto sin salto; cada pescado dorado muestra una de mis motivaciones |
 
 ## Controles
 
@@ -37,7 +37,7 @@ Fase 1: mapa en caja gris. El terreno, los caminos y las zonas ya están en su l
 
 ## Editar el contenido
 
-Todos los textos (nombre, rol, proyectos, habilidades y contacto) están en [`src/content.js`](src/content.js). El nombre del claro central se escribe con bloques y admite letras de la A a la Z.
+Todos los textos (nombre, rol, perfil, proyectos, habilidades, contacto y las frases de los pescados) están en [`src/content.js`](src/content.js). El nombre del claro central se escribe con bloques y admite letras de la A a la Z.
 
 ## Desarrollo
 

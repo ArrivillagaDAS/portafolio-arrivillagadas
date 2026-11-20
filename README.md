@@ -2,6 +2,8 @@
 
 Portafolio web interactivo en 3D. El visitante personaliza un gato y explora con él un bosque abierto: cada lugar del mapa es una sección del portafolio. La idea toma como referencia conceptual los portafolios de mundo abierto (navegar explorando en lugar de usar menús), con un gato en lugar de un vehículo.
 
+**Sitio publicado:** https://arrivillagadas.github.io/portafolio-arrivillagadas/
+
 Todo corre en el navegador con Three.js y Rapier, sin modelos de pago: los modelos vienen de paquetes gratuitos (CC0 y CC BY) y el resto se construye con geometrías primitivas y texturas de canvas.
 
 ## Estado
@@ -52,6 +54,10 @@ El servidor de desarrollo queda en `http://localhost:5175`.
 npm run build
 npm run preview
 ```
+
+## Despliegue
+
+Cada push a `main` compila el proyecto y lo publica en GitHub Pages con el workflow `.github/workflows/deploy.yml`. En el build, Vite usa la ruta base `/portafolio-arrivillagadas/`.
 
 ## Flujo de ramas
 
